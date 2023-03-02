@@ -1,25 +1,35 @@
 var gl;
-var near = 1;
-var far = -5;
+var near = 0.1;
+var far = -20;
 
 let program;
 let models;
 
-var left = -3.0;
-var right = 3.0;
-var top = 3.0;
-var bottom = -3.0;
+let starts = [
+    translate(-4.5,0,0),
+    translate(0,0,0),
+    translate(3,0,0),
+    translate(0,0,0),
+    translate(0,0,0)
+]
+
+let light = true;
+
+// var left = -3.0;
+// var right = 3.0;
+// var top = 3.0;
+// var bottom = -3.0;
 
 var eye;
 var at = vec3(0.0, 0.0, 0.0);
 var up = vec3(0.0, 1.0, 0.0);
 
 let transLoc;
+
 let vPosition;
+let lightPosition = vec4(1.0, 1.0, 0.0, 0.0 );
 
-let lightPosition = vec4(1.0, 2.0, 1.0, 0.0 );
-
-var materialAmbient = vec4( 1.0, 0.0, 1.0, 1.0 );
+var materialAmbient = vec4( 1.0, 1.0, 1.0, 1.0 );
 var lightAmbient = vec4(0.2, 0.2, 0.2, 1.0 );
 
 let specularLoc;
@@ -46,7 +56,7 @@ function main() {
     // Set viewport
     gl.viewport(0, 0, canvas.width, canvas.height);
 
-    //gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.DEPTH_TEST);
 
     // Set clear color
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -62,9 +72,7 @@ function main() {
 
     transLoc = gl.getUniformLocation(program, "translationMatrix");
 
-
-
-    eye = vec3(5,0, 1);
+    eye = vec3(7,4, 5);
     modelViewMatrix = lookAt(eye, at, up);
     //projectionMatrix = ortho(left,right,bottom,top,near,far);
     projectionMatrix = perspective(90, 1, near, far);
@@ -81,8 +89,6 @@ function main() {
 
     gl.uniform4fv(gl.getUniformLocation(program, "ambientProduct"), flatten(ambientProduct));
     gl.uniform4fv(gl.getUniformLocation(program, "lightPosition"), flatten(lightPosition));
-
-
 
     // Get the stop sign
     let stopSign = new Model(
@@ -114,12 +120,13 @@ function main() {
 
 }
 
-// function draw() {
-//     if (stopSign.objParsed) {
-//
-//     }
-//     requestAnimationFrame(draw);
-// }
+window.onkeydown = function (event) {
+    switch (event.key) {
+        case 'l':
+            light = !light;
+            clap();
+    }
+}
 
 function wait() {
     let loaded = true;
@@ -136,22 +143,25 @@ function wait() {
 }
 
 function clap() {
-    render(models[1]);
-    //requestAnimFrame(clap);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    for(m in models) {
+        gl.uniformMatrix4fv(transLoc, false, flatten(starts[m]));
+        render(models[m]);
+        gl.uniformMatrix4fv(transLoc, false, flatten(translate(0,0,0)));
+    }
 }
 function render(model) {
         let face = model.faces;
 
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    for (let i = 0; i < face.length; i++ ) {
+            console.log(flatten(face[i].faceVertices));
 
-        for (let i = 0; i < face.length; i++ ) {
-            //console.log(flatten(face[i].faceVertices));
             var vBuffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, vBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, flatten(face[i].faceVertices), gl.STATIC_DRAW);
 
             var vPosition = gl.getAttribLocation(program, "vPosition");
-            gl.vertexAttribPointer(vPosition, 3, gl.FLOAT, false, 0, 0);
+            gl.vertexAttribPointer(vPosition, 4, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(vPosition);
 
             var vNormal = gl.createBuffer();
@@ -162,9 +172,15 @@ function render(model) {
             gl.vertexAttribPointer(vNormalPosition, 4, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(vNormalPosition);
 
-            gl.uniform4fv(diffuseLoc, model.diffuseMap.get(face[i].material));
-            gl.uniform4fv(specularLoc, model.specularMap.get(face[i].material));
+            if (light) {
+                gl.uniform4fv(diffuseLoc, model.diffuseMap.get(face[i].material));
+                gl.uniform4fv(specularLoc, model.specularMap.get(face[i].material));
+            }
+            else {
+                gl.uniform4fv(diffuseLoc, vec4(0,0,0,1));
+                gl.uniform4fv(specularLoc, vec4(0,0,0,1));
+            }
 
-            gl.drawArrays(gl.TRIANGLES, 0, face[i].faceVertices.length);
+            gl.drawArrays(gl.TRIANGLE_FAN, 0, face[i].faceVertices.length);
         }
 }
