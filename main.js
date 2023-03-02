@@ -1,6 +1,6 @@
 var gl;
 var near = 0.1;
-var far = -20;
+var far = 20;
 
 let program;
 let models;
@@ -14,11 +14,14 @@ let starts = [
 ]
 
 let light = true;
+let spin = false;
 
 // var left = -3.0;
 // var right = 3.0;
 // var top = 3.0;
 // var bottom = -3.0;
+
+var spinAngle = 0;
 
 var eye;
 var at = vec3(0.0, 0.0, 0.0);
@@ -27,10 +30,10 @@ var up = vec3(0.0, 1.0, 0.0);
 let transLoc;
 
 let vPosition;
-let lightPosition = vec4(1.0, 1.0, 0.0, 0.0 );
+let lightPosition = vec4(0.0, 5.0, 0.0, 0.0);
 
 var materialAmbient = vec4( 1.0, 1.0, 1.0, 1.0 );
-var lightAmbient = vec4(0.2, 0.2, 0.2, 1.0 );
+var lightAmbient = vec4(0.1, 0.1, 0.1, 1.0 );
 
 let specularLoc;
 let diffuseLoc;
@@ -72,7 +75,7 @@ function main() {
 
     transLoc = gl.getUniformLocation(program, "translationMatrix");
 
-    eye = vec3(7,4, 5);
+    eye = vec3(5,4, 1);
     modelViewMatrix = lookAt(eye, at, up);
     //projectionMatrix = ortho(left,right,bottom,top,near,far);
     projectionMatrix = perspective(90, 1, near, far);
@@ -89,6 +92,7 @@ function main() {
 
     gl.uniform4fv(gl.getUniformLocation(program, "ambientProduct"), flatten(ambientProduct));
     gl.uniform4fv(gl.getUniformLocation(program, "lightPosition"), flatten(lightPosition));
+
 
     // Get the stop sign
     let stopSign = new Model(
@@ -116,8 +120,6 @@ function main() {
         "https://web.cs.wpi.edu/~jmcuneo/cs4731/project3/bunny.mtl");
     models = [stopSign,lamp,car,street,bunny];
     wait();
-
-
 }
 
 window.onkeydown = function (event) {
@@ -125,9 +127,35 @@ window.onkeydown = function (event) {
         case 'l':
             light = !light;
             clap();
+            break;
+        case 'c':
+            spin = !spin;
+            requestAnimFrame(cameraSpin);
+            break;
     }
 }
 
+function cameraSpin() {
+    if (spin) {
+        if (spinAngle >= 0 && spinAngle < 360) {
+            spinAngle += 10;
+            //console.log(spinAngle);
+            let trs = mult(rotateY(spinAngle), vec4(eye));
+            modelViewMatrix = lookAt(vec3(trs[0], trs[1], trs[2]), at, up);
+            //console.log(modelViewMatrix);
+            gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix));
+
+        } else {
+            spinAngle = 0;
+        }
+        requestAnimFrame(cameraSpin);
+    }
+    clap();
+}
+
+/**
+ * Waits for all of the models to load fully
+ */
 function wait() {
     let loaded = true;
     models.forEach(function(md) {
@@ -154,11 +182,11 @@ function render(model) {
         let face = model.faces;
 
     for (let i = 0; i < face.length; i++ ) {
-            console.log(flatten(face[i].faceVertices));
+            //console.log(flatten(face[i].faceVertices));
 
             var vBuffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, vBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, flatten(face[i].faceVertices), gl.STATIC_DRAW);
+            gl.bufferData(gl.ARRAY_BUFFER, flatten(face[i].faceVertices), gl.DYNAMIC_DRAW);
 
             var vPosition = gl.getAttribLocation(program, "vPosition");
             gl.vertexAttribPointer(vPosition, 4, gl.FLOAT, false, 0, 0);
@@ -166,21 +194,22 @@ function render(model) {
 
             var vNormal = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, vNormal);
-            gl.bufferData(gl.ARRAY_BUFFER, flatten(face[i].faceNormals), gl.STATIC_DRAW);
+            gl.bufferData(gl.ARRAY_BUFFER, flatten(face[i].faceNormals), gl.DYNAMIC_DRAW);
 
             var vNormalPosition = gl.getAttribLocation(program, "vNormal");
             gl.vertexAttribPointer(vNormalPosition, 4, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(vNormalPosition);
 
-            if (light) {
-                gl.uniform4fv(diffuseLoc, model.diffuseMap.get(face[i].material));
-                gl.uniform4fv(specularLoc, model.specularMap.get(face[i].material));
+            let diffuse = model.diffuseMap.get(face[i].material);
+            let specular = model.specularMap.get(face[i].material);
+            if (!light) {
+                let factor = vec4(0.03,0.03,0.03,1);
+                diffuse = mult(diffuse, factor);
+                specular = mult(diffuse, factor);
             }
-            else {
-                gl.uniform4fv(diffuseLoc, vec4(0,0,0,1));
-                gl.uniform4fv(specularLoc, vec4(0,0,0,1));
-            }
+            gl.uniform4fv(diffuseLoc, diffuse);
+            gl.uniform4fv(specularLoc, specular);
 
-            gl.drawArrays(gl.TRIANGLE_FAN, 0, face[i].faceVertices.length);
+            gl.drawArrays(gl.TRIANGLES, 0, face[i].faceVertices.length);
         }
 }
