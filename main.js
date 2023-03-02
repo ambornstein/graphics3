@@ -75,7 +75,7 @@ function main() {
 
     transLoc = gl.getUniformLocation(program, "translationMatrix");
 
-    eye = vec3(5,4, 1);
+    eye = vec3(0,4, 3);
     modelViewMatrix = lookAt(eye, at, up);
     //projectionMatrix = ortho(left,right,bottom,top,near,far);
     projectionMatrix = perspective(90, 1, near, far);
@@ -140,7 +140,7 @@ function cameraSpin() {
         if (spinAngle >= 0 && spinAngle < 360) {
             spinAngle += 1;
             //console.log(spinAngle);
-            let tran = translate(0,Math.cos(spinAngle/10),0);
+            let tran = translate(0,Math.cos(spinAngle/15)/5,0);
             let rot = rotateY(spinAngle)
             let trs = mult(mult(rot,tran), vec4(eye));
             modelViewMatrix = lookAt(vec3(trs[0], trs[1], trs[2]), at, up);
@@ -152,7 +152,7 @@ function cameraSpin() {
         }
         requestAnimFrame(cameraSpin);
     }
-    clap();
+    //clap();
 }
 
 /**
