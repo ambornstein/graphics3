@@ -138,9 +138,11 @@ window.onkeydown = function (event) {
 function cameraSpin() {
     if (spin) {
         if (spinAngle >= 0 && spinAngle < 360) {
-            spinAngle += 10;
+            spinAngle += 1;
             //console.log(spinAngle);
-            let trs = mult(rotateY(spinAngle), vec4(eye));
+            let tran = translate(0,Math.cos(spinAngle/10),0);
+            let rot = rotateY(spinAngle)
+            let trs = mult(mult(rot,tran), vec4(eye));
             modelViewMatrix = lookAt(vec3(trs[0], trs[1], trs[2]), at, up);
             //console.log(modelViewMatrix);
             gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix));
